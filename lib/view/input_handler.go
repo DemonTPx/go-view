@@ -8,6 +8,8 @@ import (
 type InputHandler struct {
 	commandChannel chan interface{}
 	binds          map[KeyMod]map[sdl.Keycode]interface{}
+	modMap         map[uint16]KeyMod
+	keyMod         KeyMod
 }
 
 type KeyMod uint16
@@ -35,11 +37,22 @@ func NewInputHandler(commandChannel chan interface{}) *InputHandler {
 				sdl.K_1:         ZoomOriginalSizeCommand{},
 				sdl.K_f:         ZoomFitToWindowCommand{},
 			},
+			KeyModControl: {
+				sdl.K_w: QuitCommand{},
+			},
 		},
+		modMap: map[uint16]KeyMod{
+			sdl.KMOD_SHIFT: KeyModShift,
+			sdl.KMOD_CTRL:  KeyModControl,
+			sdl.KMOD_ALT:   KeyModAlt,
+			sdl.KMOD_GUI:   KeyModSuper,
+		},
+		keyMod: KeyModNone,
 	}
 }
 
 func (h *InputHandler) Run() {
+
 	go func() {
 		for {
 			e := sdl.PollEvent()
@@ -52,14 +65,39 @@ func (h *InputHandler) Run() {
 			switch e.(type) {
 			case *sdl.QuitEvent:
 				h.commandChannel <- QuitCommand{}
+			case *sdl.MouseWheelEvent:
+				k := e.(*sdl.MouseWheelEvent)
+				if h.keyMod&KeyModControl == KeyModControl {
+					if k.Y < 0 {
+						h.commandChannel <- ZoomOutCommand{}
+					}
+					if k.Y > 0 {
+						h.commandChannel <- ZoomInCommand{}
+					}
+				}
 			case *sdl.KeyboardEvent:
 				k := e.(*sdl.KeyboardEvent)
+
+				if k.Type == sdl.KEYDOWN {
+					for sdlMod, keyMod := range h.modMap {
+						if k.Keysym.Mod&sdlMod != 0 {
+							h.keyMod |= keyMod
+						}
+					}
+				}
+				if k.Type == sdl.KEYUP {
+					for sdlMod, keyMod := range h.modMap {
+						if k.Keysym.Mod&sdlMod == 0 {
+							h.keyMod &^= keyMod
+						}
+					}
+				}
+
 				if k.Type != sdl.KEYDOWN {
 					continue
 				}
 
-				mod := h.ResolveMod(k.Keysym.Mod)
-				modBinds, ok := h.binds[mod]
+				modBinds, ok := h.binds[h.keyMod]
 				if !ok {
 					continue
 				}
@@ -71,21 +109,4 @@ func (h *InputHandler) Run() {
 			}
 		}
 	}()
-}
-
-func (h *InputHandler) ResolveMod(mod uint16) KeyMod {
-	keyMod := KeyModNone
-	if mod&sdl.KMOD_SHIFT != 0 {
-		keyMod |= KeyModShift
-	}
-	if mod&sdl.KMOD_CTRL != 0 {
-		keyMod |= KeyModControl
-	}
-	if mod&sdl.KMOD_ALT != 0 {
-		keyMod |= KeyModAlt
-	}
-	if mod&sdl.KMOD_GUI != 0 {
-		keyMod |= KeyModSuper
-	}
-	return keyMod
 }
