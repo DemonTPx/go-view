@@ -6,13 +6,18 @@ import (
 )
 
 type InputHandler struct {
-	commandChannel chan interface{}
-	binds          map[KeyMod]map[sdl.Keycode]interface{}
-	modMap         map[uint16]KeyMod
-	keyMod         KeyMod
+	commandChannel chan<- interface{}
+
+	keyBinds  map[KeyMod]map[sdl.Keycode]interface{}
+	keyModMap map[uint16]KeyMod
+
+	mouseWheelBinds map[KeyMod]map[MouseWheel]interface{}
+
+	currentKeyMod KeyMod
 }
 
 type KeyMod uint16
+type MouseWheel uint8
 
 const (
 	KeyModNone    KeyMod = 0
@@ -20,34 +25,59 @@ const (
 	KeyModControl KeyMod = 1 << 1
 	KeyModAlt     KeyMod = 1 << 2
 	KeyModSuper   KeyMod = 1 << 3
+
+	MouseWheelUp    = 1
+	MouseWheelDown  = 2
+	MouseWheelLeft  = 3
+	MouseWheelRight = 4
 )
 
-func NewInputHandler(commandChannel chan interface{}) *InputHandler {
+func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
 	return &InputHandler{
 		commandChannel: commandChannel,
-		binds: map[KeyMod]map[sdl.Keycode]interface{}{
+		keyBinds: map[KeyMod]map[sdl.Keycode]interface{}{
 			KeyModNone: {
 				sdl.K_ESCAPE:    QuitCommand{},
 				sdl.K_PLUS:      ZoomInCommand{},
 				sdl.K_KP_PLUS:   ZoomInCommand{},
 				sdl.K_EQUALS:    ZoomInCommand{},
 				sdl.K_KP_EQUALS: ZoomInCommand{},
+				sdl.K_UP:        ZoomInCommand{},
 				sdl.K_MINUS:     ZoomOutCommand{},
 				sdl.K_KP_MINUS:  ZoomOutCommand{},
+				sdl.K_DOWN:      ZoomOutCommand{},
 				sdl.K_1:         ZoomOriginalSizeCommand{},
 				sdl.K_f:         ZoomFitToWindowCommand{},
+				sdl.K_PAGEDOWN:  NextFileCommand{},
+				sdl.K_RIGHT:     NextFileCommand{},
+				sdl.K_PAGEUP:    PreviousFileCommand{},
+				sdl.K_LEFT:      PreviousFileCommand{},
+				sdl.K_HOME:      FirstFileCommand{},
+				sdl.K_END:       LastFileCommand{},
 			},
 			KeyModControl: {
 				sdl.K_w: QuitCommand{},
 			},
 		},
-		modMap: map[uint16]KeyMod{
+		keyModMap: map[uint16]KeyMod{
 			sdl.KMOD_SHIFT: KeyModShift,
 			sdl.KMOD_CTRL:  KeyModControl,
 			sdl.KMOD_ALT:   KeyModAlt,
 			sdl.KMOD_GUI:   KeyModSuper,
 		},
-		keyMod: KeyModNone,
+
+		mouseWheelBinds: map[KeyMod]map[MouseWheel]interface{}{
+			KeyModNone: {
+				MouseWheelUp:   PreviousFileCommand{},
+				MouseWheelDown: NextFileCommand{},
+			},
+			KeyModControl: {
+				MouseWheelUp:   ZoomOutCommand{},
+				MouseWheelDown: ZoomInCommand{},
+			},
+		},
+
+		currentKeyMod: KeyModNone,
 	}
 }
 
@@ -67,28 +97,44 @@ func (h *InputHandler) Run() {
 				h.commandChannel <- QuitCommand{}
 			case *sdl.MouseWheelEvent:
 				k := e.(*sdl.MouseWheelEvent)
-				if h.keyMod&KeyModControl == KeyModControl {
-					if k.Y < 0 {
-						h.commandChannel <- ZoomOutCommand{}
-					}
-					if k.Y > 0 {
-						h.commandChannel <- ZoomInCommand{}
-					}
+				var direction MouseWheel
+				if k.X < 0 {
+					direction = MouseWheelLeft
 				}
+				if k.X > 0 {
+					direction = MouseWheelRight
+				}
+				if k.Y < 0 {
+					direction = MouseWheelUp
+				}
+				if k.Y > 0 {
+					direction = MouseWheelDown
+				}
+
+				modBinds, ok := h.mouseWheelBinds[h.currentKeyMod]
+				if !ok {
+					continue
+				}
+				command, ok := modBinds[direction]
+				if !ok {
+					continue
+				}
+				h.commandChannel <- command
+
 			case *sdl.KeyboardEvent:
 				k := e.(*sdl.KeyboardEvent)
 
 				if k.Type == sdl.KEYDOWN {
-					for sdlMod, keyMod := range h.modMap {
+					for sdlMod, keyMod := range h.keyModMap {
 						if k.Keysym.Mod&sdlMod != 0 {
-							h.keyMod |= keyMod
+							h.currentKeyMod |= keyMod
 						}
 					}
 				}
 				if k.Type == sdl.KEYUP {
-					for sdlMod, keyMod := range h.modMap {
+					for sdlMod, keyMod := range h.keyModMap {
 						if k.Keysym.Mod&sdlMod == 0 {
-							h.keyMod &^= keyMod
+							h.currentKeyMod &^= keyMod
 						}
 					}
 				}
@@ -97,7 +143,7 @@ func (h *InputHandler) Run() {
 					continue
 				}
 
-				modBinds, ok := h.binds[h.keyMod]
+				modBinds, ok := h.keyBinds[h.currentKeyMod]
 				if !ok {
 					continue
 				}

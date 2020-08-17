@@ -7,11 +7,15 @@ import (
 
 type Command struct{}
 
+type QuitCommand Command
 type ZoomInCommand Command
 type ZoomOutCommand Command
 type ZoomOriginalSizeCommand Command
 type ZoomFitToWindowCommand Command
-type QuitCommand Command
+type FirstFileCommand Command
+type LastFileCommand Command
+type NextFileCommand Command
+type PreviousFileCommand Command
 
 type CommandHandler struct {
 	main           *Main
@@ -33,6 +37,18 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 		h.main.View.Scale = 1
 	case ZoomFitToWindowCommand:
 		h.main.FitToWindow()
+	case FirstFileCommand:
+		h.main.FileCursor.First()
+		h.main.LoadFile()
+	case LastFileCommand:
+		h.main.FileCursor.Last()
+		h.main.LoadFile()
+	case NextFileCommand:
+		h.main.FileCursor.Next()
+		h.main.LoadFile()
+	case PreviousFileCommand:
+		h.main.FileCursor.Previous()
+		h.main.LoadFile()
 	default:
 		log.Printf("unexpected command: %#v", command)
 	}

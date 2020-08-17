@@ -4,6 +4,7 @@ import (
 	"fmt"
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/veandco/go-sdl2/sdl"
+	"path/filepath"
 )
 
 const (
@@ -20,7 +21,8 @@ type Main struct {
 
 	Running bool
 
-	Filename string
+	Filename   string
+	FileCursor *FileCursor
 
 	Texture *Texture
 	View    View
@@ -85,18 +87,20 @@ func (m *Main) Run() error {
 	}
 
 	if len(m.Filename) != 0 {
-		m.Texture, err = NewTextureFromFile(m.Filename)
+		m.FileCursor, err = NewFileCursorFromFilename(m.Filename)
 		if err != nil {
-			return fmt.Errorf("failed to open file: %s", err)
+			return err
 		}
-
-		m.View = View{
-			X:     float64(windowW) / 2,
-			Y:     float64(windowH) / 2,
-			Scale: 1,
+	} else {
+		m.FileCursor, err = NewFileCursorFromWorkingDirectory()
+		if err != nil {
+			return err
 		}
+	}
 
-		m.FitToWindow()
+	err = m.LoadFile()
+	if err != nil {
+		return err
 	}
 
 	commandChannel := make(chan interface{}, 10)
@@ -162,4 +166,36 @@ func (m *Main) FitToWindow() {
 			m.View.Scale = windowW / float64(m.Texture.W)
 		}
 	}
+}
+
+func (m *Main) LoadFile() error {
+	var err error
+
+	m.Filename = m.FileCursor.GetFilename()
+
+	if len(m.Filename) == 0 {
+		return nil
+	}
+	fmt.Printf("loading file %s\n", m.Filename)
+
+	if m.Texture != nil {
+		m.Texture.Destroy()
+	}
+
+	m.Texture, err = NewTextureFromFile(m.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %s", err)
+	}
+
+	m.Window.SetTitle(fmt.Sprintf("%s - %dx%d", filepath.Base(m.Filename), m.Texture.W, m.Texture.H))
+
+	m.View = View{
+		X:     float64(windowW) / 2,
+		Y:     float64(windowH) / 2,
+		Scale: 1,
+	}
+
+	m.FitToWindow()
+
+	return nil
 }
