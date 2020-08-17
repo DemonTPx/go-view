@@ -35,7 +35,7 @@ type Main struct {
 
 type View struct {
 	X, Y  float64
-	W, H  uint32
+	W, H  float64
 	Scale float64
 }
 
@@ -128,8 +128,8 @@ func (m *Main) Run() error {
 			m.Texture.DrawScale(m.View.X, m.View.Y, m.View.Scale)
 		}
 
-		if m.Mouse.dragging {
-			rect := m.Mouse.DragRect()
+		if m.Mouse.DragLeft.Dragging {
+			rect := m.Mouse.DragLeftRect()
 			if rect.W >= DragThreshold || rect.H >= DragThreshold {
 				DrawQuadBorder(rect, DragColor, DragBorderWidth, DragBorderColor)
 			}
@@ -158,12 +158,12 @@ func (m *Main) InitGL() error {
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-	m.ResetGLView(m.Settings.Window.W, m.Settings.Window.H)
+	m.ResetGLView(float64(m.Settings.Window.W), float64(m.Settings.Window.H))
 
 	return nil
 }
 
-func (m *Main) ResetGLView(w, h uint32) {
+func (m *Main) ResetGLView(w, h float64) {
 	gl.Viewport(0, 0, gl.Sizei(w), gl.Sizei(h))
 
 	gl.MatrixMode(gl.PROJECTION)
@@ -176,8 +176,8 @@ func (m *Main) ResetGLView(w, h uint32) {
 
 	m.View.W = w
 	m.View.H = h
-	m.View.X = float64(w) / 2
-	m.View.Y = float64(h) / 2
+	m.View.X = w / 2
+	m.View.Y = h / 2
 }
 
 func (m *Main) SaveSettings() {
@@ -200,14 +200,14 @@ func (m *Main) FitToWindow() {
 		return
 	}
 
-	if m.Texture.W > int32(m.View.W) || m.Texture.H > int32(m.View.H) {
-		windowRatio := float64(m.View.W) / float64(m.View.H)
-		textureRatio := float64(m.Texture.W) / float64(m.Texture.H)
+	if m.Texture.W > m.View.W || m.Texture.H > m.View.H {
+		windowRatio := m.View.W / m.View.H
+		textureRatio := m.Texture.W / m.Texture.H
 
 		if windowRatio > textureRatio {
-			m.View.Scale = float64(m.View.H) / float64(m.Texture.H)
+			m.View.Scale = m.View.H / m.Texture.H
 		} else {
-			m.View.Scale = float64(m.View.W) / float64(m.Texture.W)
+			m.View.Scale = m.View.W / m.Texture.W
 		}
 	}
 }

@@ -55,6 +55,10 @@ func LoadSettings() Settings {
 func SaveSettings(settings Settings) {
 	settingPath := sdl.GetPrefPath("demontpx", "go-view")
 	file, err := os.OpenFile(filepath.Join(settingPath, SettingsFilename), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0664)
+	if err != nil {
+		log.Printf("failed to open settings file for writing: %s", err)
+		return
+	}
 	defer file.Close()
 
 	bytes, err := json.Marshal(settings)

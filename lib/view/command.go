@@ -19,17 +19,19 @@ type LastFileCommand struct{}
 type NextFileCommand struct{}
 type PreviousFileCommand struct{}
 type UpdateWindowSizeCommand struct {
-	W, H uint32
+	W, H float64
 }
 type SaveSettingsCommand struct{}
 type MouseCursorPositionCommand struct {
-	X, Y uint32
+	X, Y float64
 }
 type MoveViewCommand struct {
 	X, Y float64
 }
-type StartDragCommand struct{}
-type StopDragCommand struct{}
+type StartDragLeftCommand struct{}
+type StopDragLeftCommand struct{}
+type StartDragRightCommand struct{}
+type StopDragRightCommand struct{}
 
 type CommandHandler struct {
 	main           *Main
@@ -49,20 +51,20 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 	case ZoomToMouseCursorCommand:
 		c := command.(ZoomToMouseCursorCommand)
 		if c.Scale < 1 {
-			h.main.View.X += (float64(h.main.View.W)/2 - h.main.View.X) * (1 - c.Scale)
-			h.main.View.Y += (float64(h.main.View.H)/2 - h.main.View.Y) * (1 - c.Scale)
+			h.main.View.X += (h.main.View.W/2 - h.main.View.X) * (1 - c.Scale)
+			h.main.View.Y += (h.main.View.H/2 - h.main.View.Y) * (1 - c.Scale)
 		} else {
-			h.main.View.X += (float64(h.main.Mouse.X) - h.main.View.X) * (1 - c.Scale)
-			h.main.View.Y += (float64(h.main.Mouse.Y) - h.main.View.Y) * (1 - c.Scale)
+			h.main.View.X += (h.main.Mouse.X - h.main.View.X) * (1 - c.Scale)
+			h.main.View.Y += (h.main.Mouse.Y - h.main.View.Y) * (1 - c.Scale)
 		}
 		h.main.View.Scale *= c.Scale
 	case ZoomOriginalSizeCommand:
-		h.main.View.X = float64(h.main.View.W) / 2
-		h.main.View.Y = float64(h.main.View.H) / 2
+		h.main.View.X = h.main.View.W / 2
+		h.main.View.Y = h.main.View.H / 2
 		h.main.View.Scale = 1
 	case ZoomFitToWindowCommand:
-		h.main.View.X = float64(h.main.View.W) / 2
-		h.main.View.Y = float64(h.main.View.H) / 2
+		h.main.View.X = h.main.View.W / 2
+		h.main.View.Y = h.main.View.H / 2
 		h.main.FitToWindow()
 	case FirstFileCommand:
 		h.main.FileCursor.First()
@@ -83,34 +85,51 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 		h.main.SaveSettings()
 	case MouseCursorPositionCommand:
 		c := command.(MouseCursorPositionCommand)
+
+		if h.main.Mouse.DragRight.Dragging {
+			h.main.View.X += c.X - h.main.Mouse.X
+			h.main.View.Y += c.Y - h.main.Mouse.Y
+		}
+
 		h.main.Mouse.X = c.X
 		h.main.Mouse.Y = c.Y
-	case StartDragCommand:
-		h.main.Mouse.dragX = h.main.Mouse.X
-		h.main.Mouse.dragY = h.main.Mouse.Y
-		h.main.Mouse.dragging = true
-	case StopDragCommand:
-		h.main.Mouse.dragging = false
+	case StartDragLeftCommand:
+		h.main.Mouse.DragLeft = MouseDrag{
+			Dragging: true,
+			X:        h.main.Mouse.X,
+			Y:        h.main.Mouse.Y,
+		}
+	case StopDragLeftCommand:
+		h.main.Mouse.DragLeft.Dragging = false
 
-		dragRect := h.main.Mouse.DragRect()
+		dragRect := h.main.Mouse.DragLeftRect()
 
 		if dragRect.W < DragThreshold || dragRect.H < DragThreshold {
 			break
 		}
 
 		dragRatio := dragRect.W / dragRect.H
-		windowRatio := float64(h.main.View.W) / float64(h.main.View.H)
+		windowRatio := h.main.View.W / h.main.View.H
 
 		var scale float64
 		if dragRatio > windowRatio {
-			scale = float64(h.main.View.W) / dragRect.W
+			scale = h.main.View.W / dragRect.W
 		} else {
-			scale = float64(h.main.View.H) / dragRect.H
+			scale = h.main.View.H / dragRect.H
 		}
 
 		h.main.View.X += ((dragRect.X + dragRect.W/2) - h.main.View.X) * (1 - scale)
 		h.main.View.Y += ((dragRect.Y + dragRect.H/2) - h.main.View.Y) * (1 - scale)
 		h.main.View.Scale *= scale
+
+	case StartDragRightCommand:
+		h.main.Mouse.DragRight = MouseDrag{
+			Dragging: true,
+			X:        h.main.Mouse.X,
+			Y:        h.main.Mouse.Y,
+		}
+	case StopDragRightCommand:
+		h.main.Mouse.DragRight.Dragging = false
 
 	case MoveViewCommand:
 		c := command.(MoveViewCommand)

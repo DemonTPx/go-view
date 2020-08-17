@@ -129,17 +129,24 @@ func (h *InputHandler) Run() {
 			case *sdl.MouseMotionEvent:
 				m := e.(*sdl.MouseMotionEvent)
 				h.commandChannel <- MouseCursorPositionCommand{
-					X: uint32(m.X),
-					Y: uint32(m.Y),
+					X: float64(m.X),
+					Y: float64(m.Y),
 				}
 
 			case *sdl.MouseButtonEvent:
 				m := e.(*sdl.MouseButtonEvent)
 				if m.Button == sdl.BUTTON_LEFT {
 					if m.State == sdl.PRESSED {
-						h.commandChannel <- StartDragCommand{}
+						h.commandChannel <- StartDragLeftCommand{}
 					} else {
-						h.commandChannel <- StopDragCommand{}
+						h.commandChannel <- StopDragLeftCommand{}
+					}
+				}
+				if m.Button == sdl.BUTTON_RIGHT {
+					if m.State == sdl.PRESSED {
+						h.commandChannel <- StartDragRightCommand{}
+					} else {
+						h.commandChannel <- StopDragRightCommand{}
 					}
 				}
 
@@ -178,7 +185,7 @@ func (h *InputHandler) Run() {
 			case *sdl.WindowEvent:
 				w := e.(*sdl.WindowEvent)
 				if w.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
-					h.commandChannel <- UpdateWindowSizeCommand{W: uint32(w.Data1), H: uint32(w.Data2)}
+					h.commandChannel <- UpdateWindowSizeCommand{W: float64(w.Data1), H: float64(w.Data2)}
 					h.commandChannel <- SaveSettingsCommand{}
 				}
 				if w.Event == sdl.WINDOWEVENT_MOVED {

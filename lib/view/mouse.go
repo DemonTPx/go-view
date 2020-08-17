@@ -3,17 +3,30 @@ package view
 import "math"
 
 type Mouse struct {
-	X, Y uint32
+	X, Y float64
 
-	dragging     bool
-	dragX, dragY uint32
+	DragLeft  MouseDrag
+	DragRight MouseDrag
 }
 
-func (m *Mouse) DragRect() Rect {
+type MouseDrag struct {
+	Dragging bool
+	X, Y     float64
+}
+
+func (m *Mouse) DragLeftRect() Rect {
+	return m.dragRect(m.DragLeft)
+}
+
+func (m *Mouse) DragRightRect() Rect {
+	return m.dragRect(m.DragRight)
+}
+
+func (m *Mouse) dragRect(drag MouseDrag) Rect {
 	return NewRect(
-		math.Min(float64(m.X), float64(m.dragX)),
-		math.Min(float64(m.Y), float64(m.dragY)),
-		math.Abs(float64(m.X)-float64(m.dragX)),
-		math.Abs(float64(m.Y)-float64(m.dragY)),
+		math.Min(m.X, drag.X),
+		math.Min(m.Y, drag.Y),
+		math.Abs(m.X-drag.X),
+		math.Abs(m.Y-drag.Y),
 	)
 }

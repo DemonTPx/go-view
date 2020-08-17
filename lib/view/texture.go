@@ -8,9 +8,8 @@ import (
 )
 
 type Texture struct {
-	Id gl.Uint
-	W  int32
-	H  int32
+	Id   gl.Uint
+	W, H float64
 }
 
 func NewTextureFromSurface(s *sdl.Surface) *Texture {
@@ -26,8 +25,8 @@ func NewTextureFromSurface(s *sdl.Surface) *Texture {
 
 	return &Texture{
 		Id: id,
-		W:  s.W,
-		H:  s.H,
+		W:  float64(s.W),
+		H:  float64(s.H),
 	}
 }
 
@@ -69,10 +68,10 @@ func (t *Texture) DrawScale(x, y, scale float64) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	t.Bind()
 
-	gX := gl.Float(x - scale*float64(t.W)/2)
-	gY := gl.Float(y - scale*float64(t.H)/2)
-	gX2 := gX + gl.Float(scale*float64(t.W))
-	gY2 := gY + gl.Float(scale*float64(t.H))
+	gX := gl.Float(x - scale*t.W/2)
+	gY := gl.Float(y - scale*t.H/2)
+	gX2 := gX + gl.Float(scale*t.W)
+	gY2 := gY + gl.Float(scale*t.H)
 
 	gl.Color4f(1, 1, 1, 1)
 
