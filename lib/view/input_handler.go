@@ -152,6 +152,15 @@ func (h *InputHandler) Run() {
 					continue
 				}
 				h.commandChannel <- command
+			case *sdl.WindowEvent:
+				w := e.(*sdl.WindowEvent)
+				if w.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
+					h.commandChannel <- UpdateWindowSizeCommand{W: uint32(w.Data1), H: uint32(w.Data2)}
+					h.commandChannel <- SaveSettingsCommand{}
+				}
+				if w.Event == sdl.WINDOWEVENT_MOVED {
+					h.commandChannel <- SaveSettingsCommand{}
+				}
 			}
 		}
 	}()

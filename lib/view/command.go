@@ -5,17 +5,20 @@ import (
 	"time"
 )
 
-type Command struct{}
-
-type QuitCommand Command
-type ZoomInCommand Command
-type ZoomOutCommand Command
-type ZoomOriginalSizeCommand Command
-type ZoomFitToWindowCommand Command
-type FirstFileCommand Command
-type LastFileCommand Command
-type NextFileCommand Command
-type PreviousFileCommand Command
+type QuitCommand struct{}
+type ZoomInCommand struct{}
+type ZoomOutCommand struct{}
+type ZoomOriginalSizeCommand struct{}
+type ZoomFitToWindowCommand struct{}
+type FirstFileCommand struct{}
+type LastFileCommand struct{}
+type NextFileCommand struct{}
+type PreviousFileCommand struct{}
+type UpdateWindowSizeCommand struct {
+	W uint32
+	H uint32
+}
+type SaveSettingsCommand struct{}
 
 type CommandHandler struct {
 	main           *Main
@@ -49,6 +52,11 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 	case PreviousFileCommand:
 		h.main.FileCursor.Previous()
 		h.main.LoadFile()
+	case UpdateWindowSizeCommand:
+		c := command.(UpdateWindowSizeCommand)
+		h.main.ResetGLView(c.W, c.H)
+	case SaveSettingsCommand:
+		h.main.SaveSettings()
 	default:
 		log.Printf("unexpected command: %#v", command)
 	}

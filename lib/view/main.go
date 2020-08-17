@@ -7,12 +7,7 @@ import (
 	"path/filepath"
 )
 
-const (
-	windowTitle = "Go View"
-
-	windowW = 1600
-	windowH = 900
-)
+const WindowTitle = "Go View"
 
 type Main struct {
 	Window   *sdl.Window
@@ -24,6 +19,8 @@ type Main struct {
 	Filename   string
 	FileCursor *FileCursor
 
+	Settings Settings
+
 	Texture *Texture
 	View    View
 }
@@ -31,6 +28,8 @@ type Main struct {
 type View struct {
 	X     float64
 	Y     float64
+	W     uint32
+	H     uint32
 	Scale float64
 }
 
@@ -50,6 +49,8 @@ func (m *Main) Run() error {
 	}
 	defer sdl.Quit()
 
+	m.Settings = LoadSettings()
+
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 3)
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
@@ -57,14 +58,17 @@ func (m *Main) Run() error {
 	_ = sdl.GLSetAttribute(sdl.GL_MULTISAMPLESAMPLES, 4)
 	_ = sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
 
-	m.Window, m.Renderer, err = sdl.CreateWindowAndRenderer(windowW, windowH, sdl.WINDOW_OPENGL|sdl.WINDOW_RESIZABLE)
+	m.Window, err = sdl.CreateWindow(WindowTitle, int32(m.Settings.Window.X), int32(m.Settings.Window.Y), int32(m.Settings.Window.W), int32(m.Settings.Window.H), sdl.WINDOW_OPENGL|sdl.WINDOW_RESIZABLE)
+	defer m.Window.Destroy()
+	if err != nil {
+		return err
+	}
+
+	m.Renderer, err = sdl.CreateRenderer(m.Window, -1, 0)
 	if err != nil {
 		return err
 	}
 	defer m.Renderer.Destroy()
-	defer m.Window.Destroy()
-
-	m.Window.SetTitle(windowTitle)
 
 	info, err := m.Renderer.GetInfo()
 	if err != nil {
@@ -123,6 +127,8 @@ func (m *Main) Run() error {
 		commandHandler.HandleBlocking()
 	}
 
+	m.SaveSettings()
+
 	return nil
 }
 
@@ -133,22 +139,47 @@ func (m *Main) InitGL() error {
 	}
 
 	gl.ClearColor(0.2, 0.2, 0.2, 1.0)
-	gl.Viewport(0, 0, gl.Sizei(windowW), gl.Sizei(windowH))
-
-	gl.MatrixMode(gl.PROJECTION)
-	gl.LoadIdentity()
-
-	gl.Ortho(gl.Double(0), gl.Double(windowW), gl.Double(windowH), gl.Double(0), gl.Double(-1.0), gl.Double(1.0))
-
-	gl.MatrixMode(gl.MODELVIEW)
-	gl.LoadIdentity()
 
 	gl.Enable(gl.TEXTURE_2D)
 
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+	m.ResetGLView(m.Settings.Window.W, m.Settings.Window.H)
+
 	return nil
+}
+
+func (m *Main) ResetGLView(w, h uint32) {
+	gl.Viewport(0, 0, gl.Sizei(w), gl.Sizei(h))
+
+	gl.MatrixMode(gl.PROJECTION)
+	gl.LoadIdentity()
+
+	gl.Ortho(gl.Double(0), gl.Double(w), gl.Double(h), gl.Double(0), gl.Double(-1.0), gl.Double(1.0))
+
+	gl.MatrixMode(gl.MODELVIEW)
+	gl.LoadIdentity()
+
+	m.View.W = w
+	m.View.H = h
+	m.View.X = float64(w) / 2
+	m.View.Y = float64(h) / 2
+}
+
+func (m *Main) SaveSettings() {
+	x, y := m.Window.GetPosition()
+	w, h := m.Window.GetSize()
+	settings := Settings{
+		Window: WindowSettings{
+			X: uint32(x),
+			Y: uint32(y),
+			W: uint32(w),
+			H: uint32(h),
+		},
+	}
+	m.Settings = settings
+	SaveSettings(m.Settings)
 }
 
 func (m *Main) FitToWindow() {
@@ -156,14 +187,14 @@ func (m *Main) FitToWindow() {
 		return
 	}
 
-	if m.Texture.W > windowW || m.Texture.H > windowH {
-		windowRatio := float64(windowW) / float64(windowH)
+	if m.Texture.W > int32(m.View.W) || m.Texture.H > int32(m.View.H) {
+		windowRatio := float64(m.View.W) / float64(m.View.H)
 		textureRatio := float64(m.Texture.W) / float64(m.Texture.H)
 
 		if windowRatio > textureRatio {
-			m.View.Scale = windowH / float64(m.Texture.H)
+			m.View.Scale = float64(m.View.H) / float64(m.Texture.H)
 		} else {
-			m.View.Scale = windowW / float64(m.Texture.W)
+			m.View.Scale = float64(m.View.W) / float64(m.Texture.W)
 		}
 	}
 }
@@ -189,11 +220,9 @@ func (m *Main) LoadFile() error {
 
 	m.Window.SetTitle(fmt.Sprintf("%s - %dx%d", filepath.Base(m.Filename), m.Texture.W, m.Texture.H))
 
-	m.View = View{
-		X:     float64(windowW) / 2,
-		Y:     float64(windowH) / 2,
-		Scale: 1,
-	}
+	m.View.X = float64(m.View.W) / 2
+	m.View.Y = float64(m.View.H) / 2
+	m.View.Scale = 1
 
 	m.FitToWindow()
 
