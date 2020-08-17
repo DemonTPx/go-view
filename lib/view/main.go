@@ -231,10 +231,10 @@ func (m *Main) LoadFile() error {
 		return fmt.Errorf("failed to open file: %s", err)
 	}
 
-	m.Window.SetTitle(fmt.Sprintf("%s - %dx%d", filepath.Base(m.Filename), m.Texture.W, m.Texture.H))
+	m.Window.SetTitle(fmt.Sprintf("%s - %dx%d", filepath.Base(m.Filename), int(m.Texture.W), int(m.Texture.H)))
 
-	m.View.X = float64(m.View.W) / 2
-	m.View.Y = float64(m.View.H) / 2
+	m.View.X = m.View.W / 2
+	m.View.Y = m.View.H / 2
 	m.View.Scale = 1
 
 	m.FitToWindow()
