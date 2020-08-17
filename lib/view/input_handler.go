@@ -38,14 +38,14 @@ func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
 		keyBinds: map[KeyMod]map[sdl.Keycode]interface{}{
 			KeyModNone: {
 				sdl.K_ESCAPE:    QuitCommand{},
-				sdl.K_PLUS:      ZoomInCommand{},
-				sdl.K_KP_PLUS:   ZoomInCommand{},
-				sdl.K_EQUALS:    ZoomInCommand{},
-				sdl.K_KP_EQUALS: ZoomInCommand{},
-				sdl.K_UP:        ZoomInCommand{},
-				sdl.K_MINUS:     ZoomOutCommand{},
-				sdl.K_KP_MINUS:  ZoomOutCommand{},
-				sdl.K_DOWN:      ZoomOutCommand{},
+				sdl.K_PLUS:      ZoomCommand{Scale: 1.25},
+				sdl.K_KP_PLUS:   ZoomCommand{Scale: 1.25},
+				sdl.K_EQUALS:    ZoomCommand{Scale: 1.25},
+				sdl.K_KP_EQUALS: ZoomCommand{Scale: 1.25},
+				sdl.K_UP:        ZoomCommand{Scale: 1.25},
+				sdl.K_MINUS:     ZoomCommand{Scale: 0.8},
+				sdl.K_KP_MINUS:  ZoomCommand{Scale: 0.8},
+				sdl.K_DOWN:      ZoomCommand{Scale: 0.8},
 				sdl.K_1:         ZoomOriginalSizeCommand{},
 				sdl.K_f:         ZoomFitToWindowCommand{},
 				sdl.K_PAGEDOWN:  NextFileCommand{},
@@ -56,7 +56,11 @@ func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
 				sdl.K_END:       LastFileCommand{},
 			},
 			KeyModControl: {
-				sdl.K_w: QuitCommand{},
+				sdl.K_w:     QuitCommand{},
+				sdl.K_LEFT:  MoveViewCommand{X: -10},
+				sdl.K_RIGHT: MoveViewCommand{X: 10},
+				sdl.K_UP:    MoveViewCommand{Y: -10},
+				sdl.K_DOWN:  MoveViewCommand{Y: 10},
 			},
 		},
 		keyModMap: map[uint16]KeyMod{
@@ -72,8 +76,8 @@ func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
 				MouseWheelDown: NextFileCommand{},
 			},
 			KeyModControl: {
-				MouseWheelUp:   ZoomOutCommand{},
-				MouseWheelDown: ZoomInCommand{},
+				MouseWheelUp:   ZoomToMouseCursorCommand{Scale: 0.8},
+				MouseWheelDown: ZoomToMouseCursorCommand{Scale: 1.25},
 			},
 		},
 
@@ -96,18 +100,18 @@ func (h *InputHandler) Run() {
 			case *sdl.QuitEvent:
 				h.commandChannel <- QuitCommand{}
 			case *sdl.MouseWheelEvent:
-				k := e.(*sdl.MouseWheelEvent)
+				m := e.(*sdl.MouseWheelEvent)
 				var direction MouseWheel
-				if k.X < 0 {
+				if m.X < 0 {
 					direction = MouseWheelLeft
 				}
-				if k.X > 0 {
+				if m.X > 0 {
 					direction = MouseWheelRight
 				}
-				if k.Y < 0 {
+				if m.Y < 0 {
 					direction = MouseWheelUp
 				}
-				if k.Y > 0 {
+				if m.Y > 0 {
 					direction = MouseWheelDown
 				}
 
@@ -120,6 +124,13 @@ func (h *InputHandler) Run() {
 					continue
 				}
 				h.commandChannel <- command
+
+			case *sdl.MouseMotionEvent:
+				m := e.(*sdl.MouseMotionEvent)
+				h.commandChannel <- MouseCursorPositionCommand{
+					X: uint32(m.X),
+					Y: uint32(m.Y),
+				}
 
 			case *sdl.KeyboardEvent:
 				k := e.(*sdl.KeyboardEvent)
@@ -152,6 +163,7 @@ func (h *InputHandler) Run() {
 					continue
 				}
 				h.commandChannel <- command
+
 			case *sdl.WindowEvent:
 				w := e.(*sdl.WindowEvent)
 				if w.Event == sdl.WINDOWEVENT_SIZE_CHANGED {
