@@ -41,13 +41,16 @@ type CommandHandler struct {
 func NewCommandHandler(main *Main, commandChannel <-chan interface{}) *CommandHandler {
 	return &CommandHandler{main: main, commandChannel: commandChannel}
 }
-func (h *CommandHandler) HandleCommand(command interface{}) {
+
+func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool) {
 	switch command.(type) {
 	case QuitCommand:
 		h.main.Running = false
+
 	case ZoomCommand:
 		c := command.(ZoomCommand)
 		h.main.View.Scale *= c.Scale
+
 	case ZoomToMouseCursorCommand:
 		c := command.(ZoomToMouseCursorCommand)
 		if c.Scale < 1 {
@@ -58,31 +61,41 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 			h.main.View.Y += (h.main.Mouse.Y - h.main.View.Y) * (1 - c.Scale)
 		}
 		h.main.View.Scale *= c.Scale
+
 	case ZoomOriginalSizeCommand:
 		h.main.View.X = h.main.View.W / 2
 		h.main.View.Y = h.main.View.H / 2
 		h.main.View.Scale = 1
+
 	case ZoomFitToWindowCommand:
 		h.main.View.X = h.main.View.W / 2
 		h.main.View.Y = h.main.View.H / 2
 		h.main.FitToWindow()
+
 	case FirstFileCommand:
 		h.main.FileCursor.First()
 		_ = h.main.LoadFile()
+
 	case LastFileCommand:
 		h.main.FileCursor.Last()
 		_ = h.main.LoadFile()
+
 	case NextFileCommand:
 		h.main.FileCursor.Next()
 		_ = h.main.LoadFile()
+
 	case PreviousFileCommand:
 		h.main.FileCursor.Previous()
 		_ = h.main.LoadFile()
+
 	case UpdateWindowSizeCommand:
 		c := command.(UpdateWindowSizeCommand)
 		h.main.ResetGLView(c.W, c.H)
+
 	case SaveSettingsCommand:
 		h.main.SaveSettings()
+		waitForCommand = true
+
 	case MouseCursorPositionCommand:
 		c := command.(MouseCursorPositionCommand)
 
@@ -93,12 +106,17 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 
 		h.main.Mouse.X = c.X
 		h.main.Mouse.Y = c.Y
+
+		waitForCommand = !h.main.Mouse.DragLeft.Dragging && !h.main.Mouse.DragRight.Dragging
+
 	case StartDragLeftCommand:
 		h.main.Mouse.DragLeft = MouseDrag{
 			Dragging: true,
 			X:        h.main.Mouse.X,
 			Y:        h.main.Mouse.Y,
 		}
+		waitForCommand = true
+
 	case StopDragLeftCommand:
 		h.main.Mouse.DragLeft.Dragging = false
 
@@ -128,8 +146,11 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 			X:        h.main.Mouse.X,
 			Y:        h.main.Mouse.Y,
 		}
+		waitForCommand = true
+
 	case StopDragRightCommand:
 		h.main.Mouse.DragRight.Dragging = false
+		waitForCommand = true
 
 	case MoveViewCommand:
 		c := command.(MoveViewCommand)
@@ -139,21 +160,28 @@ func (h *CommandHandler) HandleCommand(command interface{}) {
 	default:
 		log.Printf("unexpected command: %#v", command)
 	}
+
+	return
 }
 
 func (h *CommandHandler) HandleBlocking() {
-	select {
-	case command := <-h.commandChannel:
-		h.HandleCommand(command)
+	waitForCommand := true
+	for waitForCommand {
+		select {
+		case command := <-h.commandChannel:
+			waitForCommand = h.HandleCommand(command)
+		}
 	}
 }
 
 func (h *CommandHandler) HandleTimeout(timeout time.Duration) {
-	select {
-	case command := <-h.commandChannel:
-		log.Printf("received command: %#v", command)
-		h.HandleCommand(command)
-	case <-time.After(timeout):
-		log.Printf("timeout reached")
+	waitForCommand := true
+	for waitForCommand {
+		select {
+		case command := <-h.commandChannel:
+			waitForCommand = h.HandleCommand(command)
+		case <-time.After(timeout):
+			waitForCommand = false
+		}
 	}
 }
