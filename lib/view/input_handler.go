@@ -99,6 +99,7 @@ func (h *InputHandler) Run() {
 			switch e.(type) {
 			case *sdl.QuitEvent:
 				h.commandChannel <- QuitCommand{}
+
 			case *sdl.MouseWheelEvent:
 				m := e.(*sdl.MouseWheelEvent)
 				var direction MouseWheel
@@ -130,6 +131,16 @@ func (h *InputHandler) Run() {
 				h.commandChannel <- MouseCursorPositionCommand{
 					X: uint32(m.X),
 					Y: uint32(m.Y),
+				}
+
+			case *sdl.MouseButtonEvent:
+				m := e.(*sdl.MouseButtonEvent)
+				if m.Button == sdl.BUTTON_LEFT {
+					if m.State == sdl.PRESSED {
+						h.commandChannel <- StartDragCommand{}
+					} else {
+						h.commandChannel <- StopDragCommand{}
+					}
 				}
 
 			case *sdl.KeyboardEvent:

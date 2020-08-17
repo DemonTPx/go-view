@@ -9,6 +9,13 @@ import (
 
 const WindowTitle = "Go View"
 
+var (
+	DragThreshold   = 5.0
+	DragColor       = NewColor(0.4, 0.4, 0.8, 0.5)
+	DragBorderWidth = 2.0
+	DragBorderColor = NewColor(0.4, 0.4, 0.8, 0.8)
+)
+
 type Main struct {
 	Window   *sdl.Window
 	Renderer *sdl.Renderer
@@ -23,13 +30,12 @@ type Main struct {
 
 	Texture *Texture
 	View    View
+	Mouse   Mouse
 }
 
 type View struct {
-	X     float64
-	Y     float64
-	W     uint32
-	H     uint32
+	X, Y  float64
+	W, H  uint32
 	Scale float64
 }
 
@@ -120,6 +126,13 @@ func (m *Main) Run() error {
 
 		if m.Texture != nil {
 			m.Texture.DrawScale(m.View.X, m.View.Y, m.View.Scale)
+		}
+
+		if m.Mouse.dragging {
+			rect := m.Mouse.DragRect()
+			if rect.W >= DragThreshold || rect.H >= DragThreshold {
+				DrawQuadBorder(rect, DragColor, DragBorderWidth, DragBorderColor)
+			}
 		}
 
 		m.Window.GLSwap()
