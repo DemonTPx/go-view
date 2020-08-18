@@ -174,6 +174,24 @@ func (h *CommandHandler) HandleBlocking() {
 	}
 }
 
+func (h *CommandHandler) HandleBlockingOrAtLeast(duration time.Duration) {
+	timeout := time.After(duration)
+	waitForCommand := true
+	breakOutHit := false
+	timeoutHit := false
+	for !timeoutHit || !breakOutHit {
+		select {
+		case command := <-h.commandChannel:
+			waitForCommand = h.HandleCommand(command)
+			if !waitForCommand {
+				breakOutHit = true
+			}
+		case <-timeout:
+			timeoutHit = true
+		}
+	}
+}
+
 func (h *CommandHandler) HandleTimeout(timeout time.Duration) {
 	waitForCommand := true
 	for waitForCommand {

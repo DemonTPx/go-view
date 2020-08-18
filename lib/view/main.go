@@ -5,6 +5,7 @@ import (
 	gl "github.com/chsc/gogl/gl21"
 	"github.com/veandco/go-sdl2/sdl"
 	"path/filepath"
+	"time"
 )
 
 const WindowTitle = "Go View"
@@ -137,7 +138,7 @@ func (m *Main) Run() error {
 
 		m.Window.GLSwap()
 
-		commandHandler.HandleBlocking()
+		commandHandler.HandleBlockingOrAtLeast(5 * time.Millisecond)
 	}
 
 	m.SaveSettings()
