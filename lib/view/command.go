@@ -136,8 +136,14 @@ func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool
 			scale = h.main.View.H / dragRect.H
 		}
 
+		// zoom in
 		h.main.View.X += ((dragRect.X + dragRect.W/2) - h.main.View.X) * (1 - scale)
 		h.main.View.Y += ((dragRect.Y + dragRect.H/2) - h.main.View.Y) * (1 - scale)
+
+		// move to center
+		h.main.View.X += h.main.View.W/2 - (dragRect.X + dragRect.W/2)
+		h.main.View.Y += h.main.View.H/2 - (dragRect.Y + dragRect.H/2)
+
 		h.main.View.Scale *= scale
 
 	case StartDragRightCommand:
