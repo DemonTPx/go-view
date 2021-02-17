@@ -3,7 +3,6 @@ package view
 import (
 	"encoding/json"
 	"github.com/veandco/go-sdl2/sdl"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -38,13 +37,8 @@ func LoadSettings() Settings {
 		log.Printf("could not open settings file %s%s\n", settingPath, SettingsFilename)
 		return DefaultSettings
 	}
-	bytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Printf("failed to read settings file: %s", err)
-		return DefaultSettings
-	}
 	var settings Settings
-	err = json.Unmarshal(bytes, &settings)
+	err = json.NewDecoder(file).Decode(&settings)
 	if err != nil {
 		log.Printf("failed to unmarshal settings: %s", err)
 		return DefaultSettings

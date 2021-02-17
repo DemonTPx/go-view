@@ -1,6 +1,6 @@
 module github.com/DemonTPx/go-view
 
-go 1.14
+go 1.16
 
 require (
 	github.com/chsc/gogl v0.0.0-20131111203533-c411acc846b6

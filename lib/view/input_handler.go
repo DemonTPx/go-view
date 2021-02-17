@@ -19,17 +19,21 @@ type InputHandler struct {
 type KeyMod uint16
 type MouseWheel uint8
 
-const (
-	KeyModNone    KeyMod = 0
-	KeyModShift   KeyMod = 1 << 0
-	KeyModControl KeyMod = 1 << 1
-	KeyModAlt     KeyMod = 1 << 2
-	KeyModSuper   KeyMod = 1 << 3
+const KeyModNone KeyMod = 0
 
-	MouseWheelUp    = 1
-	MouseWheelDown  = 2
-	MouseWheelLeft  = 3
-	MouseWheelRight = 4
+const (
+	KeyModShift KeyMod = 1 << iota
+	KeyModControl
+	KeyModAlt
+	KeyModSuper
+)
+
+const (
+	MouseWheelNone MouseWheel = iota
+	MouseWheelUp
+	MouseWheelDown
+	MouseWheelLeft
+	MouseWheelRight
 )
 
 func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
@@ -76,8 +80,8 @@ func NewInputHandler(commandChannel chan<- interface{}) *InputHandler {
 				MouseWheelDown: NextFileCommand{},
 			},
 			KeyModControl: {
-				MouseWheelUp:   ZoomToMouseCursorCommand{Scale: 0.8},
-				MouseWheelDown: ZoomToMouseCursorCommand{Scale: 1.25},
+				MouseWheelUp:   ZoomToMouseCursorCommand{Scale: 1.25},
+				MouseWheelDown: ZoomToMouseCursorCommand{Scale: 0.8},
 			},
 		},
 
@@ -102,6 +106,7 @@ func (h *InputHandler) Run() {
 
 			case *sdl.MouseWheelEvent:
 				m := e.(*sdl.MouseWheelEvent)
+
 				var direction MouseWheel
 				if m.X < 0 {
 					direction = MouseWheelLeft
@@ -110,10 +115,10 @@ func (h *InputHandler) Run() {
 					direction = MouseWheelRight
 				}
 				if m.Y < 0 {
-					direction = MouseWheelUp
+					direction = MouseWheelDown
 				}
 				if m.Y > 0 {
-					direction = MouseWheelDown
+					direction = MouseWheelUp
 				}
 
 				modBinds, ok := h.mouseWheelBinds[h.currentKeyMod]

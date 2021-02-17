@@ -1,7 +1,6 @@
 package view
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -23,7 +22,7 @@ type FileCursor struct {
 }
 
 func NewFileCursor(directory string) (*FileCursor, error) {
-	files, err := ioutil.ReadDir(directory)
+	files, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, err
 	}
