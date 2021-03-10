@@ -43,16 +43,14 @@ func NewCommandHandler(main *Main, commandChannel <-chan interface{}) *CommandHa
 }
 
 func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool) {
-	switch command.(type) {
+	switch c := command.(type) {
 	case QuitCommand:
 		h.main.Running = false
 
 	case ZoomCommand:
-		c := command.(ZoomCommand)
 		h.main.View.Scale *= c.Scale
 
 	case ZoomToMouseCursorCommand:
-		c := command.(ZoomToMouseCursorCommand)
 		if c.Scale < 1 {
 			h.main.View.X += (h.main.View.W/2 - h.main.View.X) * (1 - c.Scale)
 			h.main.View.Y += (h.main.View.H/2 - h.main.View.Y) * (1 - c.Scale)
@@ -89,7 +87,6 @@ func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool
 		_ = h.main.LoadFile()
 
 	case UpdateWindowSizeCommand:
-		c := command.(UpdateWindowSizeCommand)
 		h.main.ResetGLView(c.W, c.H)
 
 	case SaveSettingsCommand:
@@ -97,8 +94,6 @@ func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool
 		waitForCommand = true
 
 	case MouseCursorPositionCommand:
-		c := command.(MouseCursorPositionCommand)
-
 		if h.main.Mouse.DragRight.Dragging {
 			h.main.View.X += c.X - h.main.Mouse.X
 			h.main.View.Y += c.Y - h.main.Mouse.Y
@@ -159,7 +154,6 @@ func (h *CommandHandler) HandleCommand(command interface{}) (waitForCommand bool
 		waitForCommand = true
 
 	case MoveViewCommand:
-		c := command.(MoveViewCommand)
 		h.main.View.X += c.X
 		h.main.View.Y += c.Y
 
