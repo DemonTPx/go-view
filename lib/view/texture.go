@@ -2,7 +2,9 @@ package view
 
 import (
 	"fmt"
+
 	gl "github.com/chsc/gogl/gl21"
+	"github.com/veandco/go-sdl2/gfx"
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -46,12 +48,19 @@ func formatFromSurface(s *sdl.Surface) gl.Enum {
 	return gl.BGR
 }
 
-func NewTextureFromFile(file string) (*Texture, error) {
+func NewTextureFromFile(file string, orientation Orientation) (*Texture, error) {
 	surface, err := img.Load(file)
 	if err != nil {
 		return nil, fmt.Errorf("error while loading texture: %s", err)
 	}
 	defer surface.Free()
+
+	if orientation.mirrored {
+		surface = gfx.ZoomSurface(surface, -1, 1, 0)
+	}
+	if orientation.numRotations != 0 {
+		surface = gfx.RotateSurface90Degrees(surface, orientation.numRotations)
+	}
 
 	return NewTextureFromSurface(surface), nil
 }

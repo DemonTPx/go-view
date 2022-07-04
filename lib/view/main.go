@@ -2,10 +2,11 @@ package view
 
 import (
 	"fmt"
-	gl "github.com/chsc/gogl/gl21"
-	"github.com/veandco/go-sdl2/sdl"
 	"path/filepath"
 	"time"
+
+	gl "github.com/chsc/gogl/gl21"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 const WindowTitle = "Go View"
@@ -227,7 +228,12 @@ func (m *Main) LoadFile() error {
 		m.Texture.Destroy()
 	}
 
-	m.Texture, err = NewTextureFromFile(m.Filename)
+	orientation, err := ReadExifOrientation(m.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %s", err)
+	}
+
+	m.Texture, err = NewTextureFromFile(m.Filename, orientation)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %s", err)
 	}
